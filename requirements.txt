@@ -1,0 +1,7 @@
+streamlit
+psycopg2-binary
+bcrypt
+pandas
+plotly
+Pillow
+werkzeug
