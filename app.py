@@ -243,7 +243,7 @@ def home_page():
     # FOOTER
     st.markdown("""
     <div class="footer">
-        &copy; 2026 Federal Ministry of Health and Social Welfare | PPP/Diaspora Unit | NiDAH Programme | Contact: info@nidah.health.gov
+        &copy; 2026 Federal Ministry of Health and Social Welfare | PPP/Diaspora Unit | NiDAH Programme | Contact: info@nidah.health.gov.ng
     </div>
     """, unsafe_allow_html=True)
 

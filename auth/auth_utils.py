@@ -1,4 +1,6 @@
 # auth_utils.py
+import psycopg2
+import os
 import bcrypt
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import check_password_hash
