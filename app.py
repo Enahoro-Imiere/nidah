@@ -553,7 +553,7 @@ def user_dashboard():
             WHERE ui.user_id = %s AND ui.status = 'Approved'
             ORDER BY f.facility_name
         """, (st.session_state.user_id,))
-        approved_interests = cursor.fetchall()
+        approved_interests = cur.fetchall()
 
         # --- Pending / awaiting approval ---
         cur.execute("""
