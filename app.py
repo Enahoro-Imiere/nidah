@@ -536,14 +536,16 @@ def user_dashboard():
 
     st.title(f"Welcome, {st.session_state.full_name}")
     role = st.session_state.get("role", "diaspora")  # default to diaspora if role missing
-
+    
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
     # ================= DASHBOARD OVERVIEW =================
     if menu_choice == "Dashboard Overview":
         st.subheader("Dashboard Overview")
 
         # --- Approved interests (show need + facility) ---
-        cursor.execute("""
+        cur.execute("""
             SELECT f.facility_name, n.need
             FROM facility_needs n
             JOIN user_interests ui ON n.id = ui.need_id
@@ -554,7 +556,7 @@ def user_dashboard():
         approved_interests = cursor.fetchall()
 
         # --- Pending / awaiting approval ---
-        cursor.execute("""
+        cur.execute("""
             SELECT DISTINCT f.facility_name
             FROM facility_needs n
             JOIN user_interests ui ON n.id = ui.need_id
@@ -582,7 +584,7 @@ def user_dashboard():
         # ==================================================
         training_list = []  # ✅ always initialize
 
-        cursor.execute("""
+        cur.execute("""
             SELECT
                 ui.training_title,
                 ui.training_status
@@ -608,7 +610,7 @@ def user_dashboard():
                 else:
                     st.info(f"🕒 {title} — {status}")
 
-        cursor.close()
+        cur.close()
         conn.close()
 
 
@@ -660,7 +662,7 @@ def user_dashboard():
                         key=f"user_{st.session_state.user_id}_need_{row['need_id']}"
                     ):
                         # Insert into PostgreSQL and return the id
-                        cursor.execute("""
+                        cur.execute("""
                             INSERT INTO user_interests (user_id, need_id, status)
                             VALUES (%s, %s, 'Pending')
                             RETURNING id
@@ -690,7 +692,7 @@ def user_dashboard():
                                 if training_mode == "Select one":
                                     st.error("Please select a training mode.")
                                 else:
-                                    cursor.execute("""
+                                    cur.execute("""
                                         UPDATE user_interests
                                         SET training_mode = %s
                                         WHERE id = %s
@@ -726,7 +728,7 @@ def user_dashboard():
                         )
 
                         if st.button("Save Duration", key=f"duration_{interest_key}"):
-                            cursor.execute("""
+                            cur.execute("""
                                 UPDATE user_interests
                                 SET start_date = %s,
                                     end_date = %s,
@@ -759,7 +761,7 @@ def user_dashboard():
                             if not area_of_interest.strip():
                                 st.error("Please enter your area of interest before saving.")
                             else:
-                                cursor.execute("""
+                                cur.execute("""
                                     UPDATE user_interests
                                     SET area_of_interest = %s
                                     WHERE id = %s
