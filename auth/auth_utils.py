@@ -91,31 +91,39 @@ def authenticate_admin(username, password):
 
 
 # ---------------- User Registration ----------------
+from psycopg2 import errors
+
 def register_user(username, full_name, email, password, role="user",
                   country=None, cadre=None, specialization=None):
+
     conn = get_connection()
     cur = conn.cursor()
 
-    # Check if username exists
-    cur.execute("SELECT id FROM users WHERE username=%s", (username,))
-    if cur.fetchone():
+    try:
+        # Hash password
+        hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+        cur.execute("""
+            INSERT INTO users 
+            (username, full_name, email, password_hash, role, country, cadre, specialization)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (username.lower(), full_name, email.lower(), hashed_pw,
+              role, country, cadre, specialization))
+
+        conn.commit()
+        return True, "Registration successful"
+
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        return False, "Username or email already exists."
+
+    except Exception as e:
+        conn.rollback()
+        return False, "Something went wrong. Please try again."
+
+    finally:
+        cur.close()
         conn.close()
-        return False, "Username already exists"
-
-    # Hash password
-    hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-    # Insert into DB
-    cur.execute("""
-        INSERT INTO users (username, full_name, email, password_hash, role, country, cadre, specialization)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-    """, (username, full_name, email, hashed_pw, role, country, cadre, specialization))
-
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    return True, "Registration successful"
 
 
 # ---------------- Email Verification ----------------

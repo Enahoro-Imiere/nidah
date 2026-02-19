@@ -509,6 +509,17 @@ def reset_password_page():
 # -------------------------------------------------
 def user_dashboard():
     role = st.session_state.get("role", "")
+    
+    menu_choice = st.sidebar.selectbox(
+        "Select Option",
+        [
+            "Dashboard Overview",
+            "Profile",
+            "Programs",
+            "Settings",
+            "Logout"
+        ]
+    )
 
     TRAINING_MODES = [
         "Select one",
