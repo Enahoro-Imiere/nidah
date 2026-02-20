@@ -1111,42 +1111,42 @@ def admin_dashboard():
 
             if individuals:
                 st.markdown("### Registered Individuals")
-                ind_cols = ["Full Name", "Username", "Country", "Action"]
-                df_ind = pd.DataFrame(
-                    [(full_name, username, country, "View") for (id, username, full_name, country, role) in individuals],
-                    columns=ind_cols
-                )
-                st.dataframe(df_ind, use_container_width=True)
+                df_ind = pd.DataFrame(individuals, columns=["ID", "Username", "Full Name", "Country", "Role"])
+                df_ind_display = df_ind[["Full Name"]].copy()
+                df_ind_display["Action"] = ["View"] * len(df_ind_display)
 
-                for user_id, username, full_name, country, role in individuals:
-                    if st.button(f"View {full_name}", key=f"view_ind_{user_id}"):
-                        st.markdown(f"### 🧑 {full_name}'s Profile")
-                        # Basic info
-                        st.write("**Username:**", username)
-                        st.write("**Country:**", country)
+                for idx, row in df_ind_display.iterrows():
+                    col1, col2 = st.columns([4,1])
+                    with col1:
+                        st.write(row["Full Name"])
+                    with col2:
+                        if st.button("View", key=f"view_ind_{df_ind.at[idx,'ID']}"):
+                            user_id = df_ind.at[idx,"ID"]
+                            st.markdown(f"### 🧑 {row['Full Name']}'s Profile")
+                            st.write("**Username:**", df_ind.at[idx,"Username"])
+                            st.write("**Country:**", df_ind.at[idx,"Country"])
 
-                        # Fetch medical license & documents
-                        cur.execute("""
-                            SELECT license_number, file_path, additional_files
-                            FROM user_documents
-                            WHERE user_id = %s
-                        """, (user_id,))
-                        docs = cur.fetchone()
-                        if docs:
-                            license_number, license_file, additional_files = docs
-                            st.write("**Medical License Number:**", license_number or "N/A")
-                            if license_file and os.path.exists(license_file):
-                                with open(license_file, "rb") as f:
-                                    st.download_button("Download License", f.read(), file_name=os.path.basename(license_file))
-                            if additional_files:
-                                for fpath in additional_files:
-                                    if fpath and os.path.exists(fpath):
-                                        with open(fpath, "rb") as f:
-                                            st.download_button(f"Download Additional File", f.read(), file_name=os.path.basename(fpath))
-                        else:
-                            st.info("No documents uploaded yet.")
-                        st.markdown("---")
-
+                            # Fetch medical license & documents
+                            cur.execute("""
+                                SELECT license_number, file_path, additional_files
+                                FROM user_documents
+                                WHERE user_id = %s
+                            """, (user_id,))
+                            docs = cur.fetchone()
+                            if docs:
+                                license_number, license_file, additional_files = docs
+                                st.write("**Medical License Number:**", license_number or "N/A")
+                                if license_file and os.path.exists(license_file):
+                                    with open(license_file, "rb") as f:
+                                        st.download_button("Download License", f.read(), file_name=os.path.basename(license_file))
+                                if additional_files:
+                                    for fpath in additional_files:
+                                        if fpath and os.path.exists(fpath):
+                                            with open(fpath, "rb") as f:
+                                                st.download_button(f"Download Additional File", f.read(), file_name=os.path.basename(fpath))
+                            else:
+                                st.info("No documents uploaded yet.")
+                            st.markdown("---")
             else:
                 st.info("No registered individual users found.")
 
@@ -1163,37 +1163,39 @@ def admin_dashboard():
 
             if associations:
                 st.markdown("### Registered Associations")
-                assoc_cols = ["Full Name", "Username", "Country", "Action"]
-                df_assoc = pd.DataFrame(
-                    [(full_name, username, country, "View") for (id, username, full_name, country) in associations],
-                    columns=assoc_cols
-                )
-                st.dataframe(df_assoc, use_container_width=True)
+                df_assoc = pd.DataFrame(associations, columns=["ID", "Username", "Full Name", "Country"])
+                df_assoc_display = df_assoc[["Full Name"]].copy()
+                df_assoc_display["Action"] = ["View"] * len(df_assoc_display)
 
-                for user_id, username, full_name, country in associations:
-                    if st.button(f"View {full_name}", key=f"view_assoc_{user_id}"):
-                        st.markdown(f"### 🏢 {full_name} Profile")
-                        st.write("**Username:**", username)
-                        st.write("**Country:**", country)
+                    for idx, row in df_assoc_display.iterrows():
+                    col1, col2 = st.columns([4,1])
+                    with col1:
+                        st.write(row["Full Name"])
+                    with col2:
+                        if st.button("View", key=f"view_assoc_{df_assoc.at[idx,'ID']}"):
+                            user_id = df_assoc.at[idx,"ID"]
+                            st.markdown(f"### 🏢 {row['Full Name']} Profile")
+                            st.write("**Username:**", df_assoc.at[idx,"Username"])
+                            st.write("**Country:**", df_assoc.at[idx,"Country"])
 
-                        # Fetch documents
-                        cur.execute("""
-                            SELECT temp_license, additional_files
-                            FROM association_documents
-                            WHERE user_id = %s
-                        """, (user_id,))
-                        docs = cur.fetchone()
-                        if docs:
-                            temp_license, additional_files = docs
-                            st.write("**Temporary License Needed:**", "Yes" if temp_license else "No")
-                            if additional_files:
-                                for fpath in additional_files:
-                                    if fpath and os.path.exists(fpath):
-                                        with open(fpath, "rb") as f:
-                                            st.download_button(f"Download Additional File", f.read(), file_name=os.path.basename(fpath))
-                        else:
-                            st.info("No documents uploaded yet.")
-                        st.markdown("---")
+                            # Fetch documents
+                            cur.execute("""
+                                SELECT temp_license, additional_files
+                                FROM association_documents
+                                WHERE user_id = %s
+                            """, (user_id,))
+                            docs = cur.fetchone()
+                            if docs:
+                                temp_license, additional_files = docs
+                                st.write("**Temporary License Needed:**", "Yes" if temp_license else "No")
+                                if additional_files:
+                                    for fpath in additional_files:
+                                        if fpath and os.path.exists(fpath):
+                                            with open(fpath, "rb") as f:
+                                                st.download_button(f"Download Additional File", f.read(), file_name=os.path.basename(fpath))
+                            else:
+                                st.info("No documents uploaded yet.")
+                            st.markdown("---")
             else:
                 st.info("No registered associations found.")
 
@@ -1209,28 +1211,36 @@ def admin_dashboard():
 
             if facilities:
                 st.markdown("### Registered Facilities")
-                fac_cols = ["Facility Name", "Facility Code", "State", "Action"]
-                df_fac = pd.DataFrame(
-                    [(name, code, state, "View") for (id, name, code, state) in facilities],
-                    columns=fac_cols
-                )
-                st.dataframe(df_fac, use_container_width=True)
+                df_fac = pd.DataFrame(facilities, columns=["ID", "Facility Name", "Code", "State"])
+                df_fac_display = df_fac[["Facility Name"]].copy()
+                df_fac_display["Action"] = ["View"] * len(df_fac_display)
 
-                for fac_id, name, code, state in facilities:
-                    if st.button(f"View {name}", key=f"view_fac_{fac_id}"):
-                        st.markdown(f"### 🏥 {name} Details")
-                        st.write("**Facility Code:**", code)
-                        st.write("**State:**", state)
-                        st.markdown("---")
+                for idx, row in df_fac_display.iterrows():
+                    col1, col2 = st.columns([4,1])
+                    with col1:
+                        st.write(row["Facility Name"])
+                    with col2:
+                        if st.button("View", key=f"view_fac_{df_fac.at[idx,'ID']}"):
+                            st.markdown(f"### 🏥 {row['Facility Name']} Details")
+                            st.write("**Facility Code:**", df_fac.at[idx,"Code"])
+                            st.write("**State:**", df_fac.at[idx,"State"])
+                            st.markdown("---")
             else:
                 st.info("No registered facilities found.")
 
-            cur.close()
-            conn.close()
+        # ---------------- AUTO MATCH USERS ----------------
+        st.markdown("---")
+        st.subheader("Auto-Match Users to Facilities")
+        if st.button("Run Auto-Match"):
+            result = match_users_to_facilities()  # your existing matching function
+            st.success(result)
 
-        except Exception as e:
-            st.error("Could not load applications.")
-            st.exception(e)
+        cur.close()
+        conn.close()
+
+    except Exception as e:
+        st.error("Could not load applications.")
+        st.exception(e)
 
 
     # ---------------- REPORTS ----------------
