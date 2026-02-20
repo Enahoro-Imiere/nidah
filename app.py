@@ -777,172 +777,103 @@ def user_dashboard():
             
     # ---------------- UPLOAD DOCUMENTS ----------------
     if menu_choice == "Upload Documents":
-        st.write("Current role:", role)
-
-        conn = get_connection()
-        cur = conn.cursor()
-
+        role = st.session_state.get("role", "diaspora")
         st.subheader("Upload Your Qualifications")
         st.info("Accepted formats: PDF, PNG, JPEG")
-        
 
+        license_number = None
+        uploaded_file = None
+        renew_license = "No"
+        not_registered_ng = "No"
+        temp_license = "No"
 
         if role != "association":
-
-            # ---- License Number ----
-            license_number = st.text_input(
-                "Enter your Medical License Number",
-                key="license_number_input"
-            )
-
-            # ---- Registration status ----
+            license_number = st.text_input("Enter your Medical License Number")
             col1, col2 = st.columns(2)
-
             with col1:
-                renew_license = st.radio(
-                    "Would you want to renew your license?",
-                    ["No", "Yes"],
-                    horizontal=True
-                )
-
+                renew_license = st.radio("Would you want to renew your license?", ["No", "Yes"], horizontal=True)
             with col2:
-                not_registered_ng = st.radio(
-                    "Not registered in Nigeria?",
-                    ["No", "Yes"],
-                    horizontal=True
-                )
-
-            # ---- Main license upload ----
-            uploaded_file = st.file_uploader(
-                "Are you registered in Nigeria? Upload Supporting Document(s)",
-                type=["pdf", "png", "jpeg"]
-            )
-
-            
+                not_registered_ng = st.radio("Not registered in Nigeria?", ["No", "Yes"], horizontal=True)
+            uploaded_file = st.file_uploader("Upload your medical license", type=["pdf","png","jpeg"])
         else:
-            # Associations do not need license
-            license_number = None
-            uploaded_file = None
-            renew_license = "No"
-            not_registered_ng = "No"
-        
-            # ---- Temporary license option ----
-            temp_license = st.radio(
-                "Need a temporary license(s)?",
-                ["No", "Yes"],
-                horizontal=True,
-                key="temp_license"
-            )
+            temp_license = st.radio("Need a temporary license(s)?", ["No", "Yes"], horizontal=True)
 
-        # ---- Additional qualifications ----
-        additional_files = st.file_uploader(
-            "Upload Additional Qualification(s)",
-            type=["pdf", "png", "jpeg"],
-            accept_multiple_files=True
-        )
+        additional_files = st.file_uploader("Upload Additional Qualification(s)", type=["pdf","png","jpeg"], accept_multiple_files=True)
 
-        # ---- Submit ----
         if st.button("Submit Documents"):
+            # check files
+            if role != "association" and (not license_number or not uploaded_file):
+                st.error("Please provide license and upload file")
+                st.stop()
 
-            # --- User validation ---
-            if role != "association":
-                if not license_number:
-                    st.error("Please enter your license number.")
-                    st.stop()
-                if not uploaded_file:
-                    st.error("Please upload your medical license file.")
-                    st.stop()
-
-            # --- File saving ---
-            BASE_DIR = os.getcwd()
-            LICENSE_DIR = os.path.join(BASE_DIR, "uploads/licenses")
-            EXTRA_DIR = os.path.join(BASE_DIR, "uploads/qualifications")
+            # save files
+            BASE_DIR = "/home/appuser/uploads"
+            LICENSE_DIR = os.path.join(BASE_DIR, "licenses")
+            EXTRA_DIR = os.path.join(BASE_DIR, "qualifications")
             os.makedirs(LICENSE_DIR, exist_ok=True)
             os.makedirs(EXTRA_DIR, exist_ok=True)
 
-            # ---- License file ----
+            # save main license
             license_path = None
             if uploaded_file:
-                ext = uploaded_file.name.split(".")[-1].lower()
-                license_filename = f"user_{st.session_state.user_id}_license_{int(time.time())}.{ext}"
-                license_path = os.path.join(LICENSE_DIR, license_filename)
+                license_path = os.path.join(LICENSE_DIR, uploaded_file.name)
                 with open(license_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
 
-            # ---- Additional qualifications ----
+            # save additional files
             extra_paths = []
             if additional_files:
-                for file in additional_files:
-                    ext = file.name.split(".")[-1].lower()
-                    fname = f"user_{st.session_state.user_id}_qual_{int(time.time())}_{file.name}"
-                    fpath = os.path.join(EXTRA_DIR, fname)
-                    with open(fpath, "wb") as f:
-                        f.write(file.getbuffer())
+                for f in additional_files:
+                    fpath = os.path.join(EXTRA_DIR, f.name)
+                    with open(fpath, "wb") as fd:
+                        fd.write(f.getbuffer())
                     extra_paths.append(fpath)
 
-                if role != "association":
-                    # ===== NORMAL USER INSERT =====
-                    cur.execute("""
-                        INSERT INTO user_documents (
-                            user_id,
-                            license_number,
-                            file_path,
-                            renew_license,
-                            not_registered_nigeria,
-                            additional_files,
-                            uploaded_at
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, NOW())
-                        ON CONFLICT (user_id, license_number) DO UPDATE
-                        SET file_path = EXCLUDED.file_path,
-                            renew_license = EXCLUDED.renew_license,
-                            not_registered_nigeria = EXCLUDED.not_registered_nigeria,
-                            additional_files = EXCLUDED.additional_files,
-                            uploaded_at = NOW()
-                    """, (
+            # insert into DB
+            conn = get_connection()
+            cur = conn.cursor()
+            if role != "association":
+                cur.execute(
+                    """
+                    INSERT INTO user_documents (user_id, license_number, file_path, renew_license, not_registered_nigeria, additional_files, uploaded_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                    ON CONFLICT (user_id, license_number) DO UPDATE
+                    SET file_path = EXCLUDED.file_path,
+                        renew_license = EXCLUDED.renew_license,
+                        not_registered_nigeria = EXCLUDED.not_registered_nigeria,
+                        additional_files = EXCLUDED.additional_files,
+                        uploaded_at = NOW()
+                    """,
+                    (
                         st.session_state.user_id,
                         license_number,
                         license_path,
                         renew_license == "Yes",
                         not_registered_ng == "Yes",
                         extra_paths if extra_paths else None
-                    ))
-
-                else:
-                    # ===== ASSOCIATION INSERT =====
-                    cur.execute("""
-                        INSERT INTO association_documents (
-                            user_id,
-                            additional_files,
-                            temp_license,
-                            uploaded_at
-                        )
-                        VALUES (%s, %s, %s, NOW())
-                        ON CONFLICT (user_id) DO UPDATE
-                        SET additional_files = EXCLUDED.additional_files,
-                            temp_license = EXCLUDED.temp_license,
-                            uploaded_at = NOW()
-                    """, (
+                    )
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO association_documents (user_id, additional_files, temp_license, uploaded_at)
+                    VALUES (%s, %s, %s, NOW())
+                    ON CONFLICT (user_id) DO UPDATE
+                    SET additional_files = EXCLUDED.additional_files,
+                        temp_license = EXCLUDED.temp_license,
+                        uploaded_at = NOW()
+                    """,
+                    (
                         st.session_state.user_id,
                         extra_paths if extra_paths else None,
-                        True if temp_license == "Yes" else False
-                    ))
+                        temp_license == "Yes"
+                    )
+                )
 
-                conn.commit()
-                cur.close()
-                conn.close()
-
-                st.success("Documents uploaded successfully ✅")
-
-
-    # ================= LOGOUT =================
-    elif menu_choice == "Logout":
-        conn.close()
-        st.session_state.clear()
-        st.session_state.page = "login_user"
-        st.rerun()
-
-    conn.close()
+            conn.commit()
+            cur.close()
+            conn.close()
+            st.success("Documents uploaded successfully ✅")
 
 
 # ---------------- Database Helpers / KPI Functions ----------------
