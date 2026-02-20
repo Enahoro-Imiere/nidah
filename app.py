@@ -1860,6 +1860,7 @@ def facility_dashboard_page():
                 ORDER BY timestamp DESC
             """, (st.session_state.user_id,))
             needs = cur.fetchall()
+            cur.close()
             conn.close()
 
             if not needs:
