@@ -965,7 +965,7 @@ def admin_dashboard():
         "Navigation",
         [
             "Overview",
-            "Trainings ongoing and concluded",
+            "List of Trainings concluded",
             "Applications",
             "Reports",
             "Logout"
