@@ -508,22 +508,6 @@ def reset_password_page():
 # -------------------------------------------------
 def user_dashboard():
     role = st.session_state.get("role", "")
-    
-    menu_choice = st.sidebar.selectbox(
-        "Select Option",
-        [
-            "Dashboard Overview",
-            "Profile",
-            "Programs",
-            "Settings",
-            "Logout"
-        ]
-    )
-
-    program_category = None  # default
-    programs_dict = get_programs()  # your function returning {category: [programs]}
-    program_category = st.selectbox("Select Program Category", list(programs_dict.keys()))
-
 
     TRAINING_MODES = [
         "Select one",
@@ -540,16 +524,14 @@ def user_dashboard():
 
     st.title(f"Welcome, {st.session_state.full_name}")
     role = st.session_state.get("role", "diaspora")  # default to diaspora if role missing
-    
-    conn = get_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
+
 
     # ================= DASHBOARD OVERVIEW =================
     if menu_choice == "Dashboard Overview":
         st.subheader("Dashboard Overview")
 
         # --- Approved interests (show need + facility) ---
-        cur.execute("""
+        cursor.execute("""
             SELECT f.facility_name, n.need
             FROM facility_needs n
             JOIN user_interests ui ON n.id = ui.need_id
@@ -557,10 +539,10 @@ def user_dashboard():
             WHERE ui.user_id = %s AND ui.status = 'Approved'
             ORDER BY f.facility_name
         """, (st.session_state.user_id,))
-        approved_interests = cur.fetchall()
+        approved_interests = cursor.fetchall()
 
         # --- Pending / awaiting approval ---
-        cur.execute("""
+        cursor.execute("""
             SELECT DISTINCT f.facility_name
             FROM facility_needs n
             JOIN user_interests ui ON n.id = ui.need_id
@@ -568,7 +550,7 @@ def user_dashboard():
             WHERE ui.user_id = %s AND ui.status = 'Pending'
             ORDER BY f.facility_name
         """, (st.session_state.user_id,))
-        pending_facilities = cur.fetchall()
+        pending_facilities = cursor.fetchall()
 
         if not approved_interests and not pending_facilities:
             st.info("You have not engaged in any program yet.")
@@ -588,7 +570,7 @@ def user_dashboard():
         # ==================================================
         training_list = []  # ✅ always initialize
 
-        cur.execute("""
+        cursor.execute("""
             SELECT
                 ui.training_title,
                 ui.training_status
@@ -599,7 +581,7 @@ def user_dashboard():
               AND ui.status = 'Approved'
             ORDER BY ui.training_status
         """, (st.session_state.user_id,))
-        training_list = cur.fetchall()
+        training_list = cursor.fetchall()
 
         st.markdown("### 📘 List of Training(s)")
 
@@ -614,46 +596,167 @@ def user_dashboard():
                 else:
                     st.info(f"🕒 {title} — {status}")
 
-        cur.close()
+        cursor.close()
         conn.close()
 
 
     # ================= PROGRAMS =================
     if menu_choice == "Programs":
+        st.subheader(f"{program_category} Programs")
 
-         programs_list = ["Training", "Services"]
-         program_category = st.selectbox("Select Program Category", programs_list)
+        # Get facility + needs filtered by Training or Services
+        needs = get_facility_needs_by_program_type(program_category)
 
-         if program_category:
-             st.subheader(f"{program_category} Programs")
+        if not needs:
+            st.info(f"No facilities found under {program_category}.")
+        else:
+            # Expected return format:
+            # (facility_id, facility_name, need_id, need, number)
+            df = pd.DataFrame(
+                needs,
+                columns=["facility_id", "facility_name", "need_id", "need", "number"]
+            )
 
-             # Open connection
-             conn = get_connection()
-             cur = conn.cursor()
+            # STEP 1: show facilities first
+            facilities = df[["facility_id", "facility_name"]].drop_duplicates()
 
-             try:
-                 # Fetch facility needs from PostgreSQL
-                 cur.execute(
-                     "SELECT facility_id, facility_name, need_id, need, number "
-                     "FROM facility_needs WHERE program_type = %s",
-                     (program_category,)
-                 )
-                 needs = cur.fetchall()
+            selected_facility_id = st.selectbox(
+                "Select Facility",
+                facilities["facility_id"],
+                format_func=lambda x: facilities.loc[
+                    facilities["facility_id"] == x, "facility_name"
+                ].values[0]
+            )
 
-                 if not needs:
-                     st.info(f"No facilities found under {program_category}.")
-                 else:
-                     import pandas as pd
-                     df = pd.DataFrame(
-                         needs,
-                         columns=["facility_id", "facility_name", "need_id", "need", "number"]
-                     )
-                     st.write(df)  # quick demo for presentation
+            # STEP 2: show needs for selected facility
+            facility_needs = df[df["facility_id"] == selected_facility_id]
 
-             finally:
-                 cur.close()
-                 conn.close()
+            st.markdown("### Facility Needs")
 
+            for _, row in facility_needs.iterrows():
+                col1, col2 = st.columns([6, 2])
+
+                with col1:
+                    st.write(f"• {row['need']} (Qty: {row['number']})")
+
+                with col2:
+                    interest_key = f"interest_{st.session_state.user_id}_{row['need_id']}"
+
+                    # --- Indicate Interest button ---
+                    if st.button(
+                        "Indicate Interest",
+                        key=f"user_{st.session_state.user_id}_need_{row['need_id']}"
+                    ):
+                        # Insert into PostgreSQL and return the id
+                        cursor.execute("""
+                            INSERT INTO user_interests (user_id, need_id, status)
+                            VALUES (%s, %s, 'Pending')
+                            RETURNING id
+                        """, (st.session_state.user_id, row['need_id']))
+            
+                        st.session_state[interest_key] = cursor.fetchone()[0]  # store interest_id
+                        conn.commit()
+                        st.success("Interest recorded and awaiting approval")
+
+
+
+                    if interest_key in st.session_state:
+
+                        # ---------------- TRAINING MODE ----------------
+                        if program_category == "Training":
+
+                            st.markdown("### Training Mode")
+
+                            training_mode = st.selectbox(
+                                "How would you like to deliver this training?",
+                                TRAINING_MODES,
+                                key=f"training_mode_{interest_key}"
+                            )
+
+                            if st.button("Save Training Mode", key=f"save_training_{interest_key}"):
+
+                                if training_mode == "Select one":
+                                    st.error("Please select a training mode.")
+                                else:
+                                    cursor.execute("""
+                                        UPDATE user_interests
+                                        SET training_mode = %s
+                                        WHERE id = %s
+                                    """, (
+                                        training_mode,
+                                        st.session_state[interest_key]
+                                    ))
+                                    conn.commit()
+
+                                    st.session_state[f"training_saved_{interest_key}"] = True
+                                    st.success("Training mode saved successfully ✅")
+
+
+                    # --- Duration & Type form (always check session_state) ---
+                    show_duration = (
+                        program_category != "Training"
+                        or st.session_state.get(f"training_saved_{interest_key}")
+                    )
+
+                    if show_duration:    
+                        st.markdown("### Set Expected Duration and Type")
+
+                        start_date = st.date_input(
+                            "Start Date", key=f"start_{interest_key}"
+                        )
+                        end_date = st.date_input(
+                            "End Date", key=f"end_{interest_key}"
+                        )
+                        engagement_type = st.radio(
+                            "Type of Engagement",
+                            ["Short-term Service", "Sabbatical"],
+                            key=f"type_{interest_key}"
+                        )
+
+                        if st.button("Save Duration", key=f"duration_{interest_key}"):
+                            cursor.execute("""
+                                UPDATE user_interests
+                                SET start_date = %s,
+                                    end_date = %s,
+                                    engagement_type = %s
+                                WHERE id = %s
+                            """, (
+                                start_date,
+                                end_date,
+                                engagement_type,
+                                st.session_state[interest_key]
+                            ))
+                            conn.commit()
+
+                            # Mark duration as saved
+                            st.session_state[f"duration_saved_{interest_key}"] = True
+                            st.success("Duration and type saved successfully!")
+
+                    # --- Area of Interest (only AFTER duration is saved) ---
+                    if st.session_state.get(f"duration_saved_{interest_key}"):
+
+                        st.markdown("### Area of Interest")
+
+                        area_of_interest = st.text_area(
+                            "Please describe your specific area of interest or expertise",
+                            key=f"area_{interest_key}",
+                            placeholder="e.g. Oncology nursing training, laparoscopic surgery mentoring, radiology capacity building…"
+                        )
+
+                        if st.button("Save Area of Interest", key=f"save_area_{interest_key}"):
+                            if not area_of_interest.strip():
+                                st.error("Please enter your area of interest before saving.")
+                            else:
+                                cursor.execute("""
+                                    UPDATE user_interests
+                                    SET area_of_interest = %s
+                                    WHERE id = %s
+                                """, (
+                                    area_of_interest,
+                                    st.session_state[interest_key]
+                                ))
+                                conn.commit()
+                                st.success("Area of interest saved successfully ✅")
 
             
     # ---------------- UPLOAD DOCUMENTS ----------------
@@ -814,6 +917,22 @@ def user_dashboard():
                 conn.close()
 
                 st.success("Documents uploaded successfully ✅")
+
+
+
+
+
+
+
+    # ================= LOGOUT =================
+    elif menu_choice == "Logout":
+        conn.close()
+        st.session_state.clear()
+        st.session_state.page = "login_user"
+        st.rerun()
+
+    conn.close()
+
 
 
 
