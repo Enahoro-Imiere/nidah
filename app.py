@@ -1228,19 +1228,19 @@ def admin_dashboard():
             else:
                 st.info("No registered facilities found.")
 
-        # ---------------- AUTO MATCH USERS ----------------
-        st.markdown("---")
-        st.subheader("Auto-Match Users to Facilities")
-        if st.button("Run Auto-Match"):
-            result = match_users_to_facilities()  # your existing matching function
-            st.success(result)
+            # ---------------- AUTO MATCH USERS ----------------
+            st.markdown("---")
+            st.subheader("Auto-Match Users to Facilities")
+            if st.button("Run Auto-Match"):
+                result = match_users_to_facilities()  # your existing matching function
+                st.success(result)
 
-        cur.close()
-        conn.close()
+            cur.close()
+            conn.close()
 
-    except Exception as e:
-        st.error("Could not load applications.")
-        st.exception(e)
+        except Exception as e:
+            st.error("Could not load applications.")
+            st.exception(e)
 
 
     # ---------------- REPORTS ----------------
