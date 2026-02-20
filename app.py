@@ -1167,7 +1167,7 @@ def admin_dashboard():
                 df_assoc_display = df_assoc[["Full Name"]].copy()
                 df_assoc_display["Action"] = ["View"] * len(df_assoc_display)
 
-                    for idx, row in df_assoc_display.iterrows():
+                for idx, row in df_assoc_display.iterrows():
                     col1, col2 = st.columns([4,1])
                     with col1:
                         st.write(row["Full Name"])
