@@ -1788,6 +1788,9 @@ def register_page():
 #---------------------------------------------------
 def facility_dashboard_page():
 
+    conn = get_connection()
+    cur = conn.cursor()
+
     # --- Session check ---
     if "user_id" not in st.session_state or st.session_state.get("user_role") != "facility":
         st.error("Session expired. Please log in again.")
