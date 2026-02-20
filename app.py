@@ -14,12 +14,6 @@ from datetime import datetime, timedelta
 
 from database.db import get_connection
 
-st.set_page_config(
-    page_title="NiDAH Portal",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
 
 st.set_page_config(page_title="NiDAH-P Portal", layout="wide")
 
