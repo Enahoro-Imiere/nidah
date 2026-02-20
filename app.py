@@ -1409,7 +1409,7 @@ def admin_dashboard():
                 # Excel download
                 from io import BytesIO
                 output = BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                with pd.ExcelWriter(output) as writer:
                     df_feedback.to_excel(writer, index=False)
                 excel_data = output.getvalue()
 
