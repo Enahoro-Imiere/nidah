@@ -1853,6 +1853,7 @@ def facility_dashboard_page():
         try:
             conn = get_connection()
             cur = conn.cursor()
+
             cur.execute("""
                 SELECT need, number, timestamp
                 FROM facility_needs
