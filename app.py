@@ -779,6 +779,9 @@ def user_dashboard():
     if menu_choice == "Upload Documents":
         st.write("Current role:", role)
 
+    conn = get_connection()
+    cur = conn.cursor()
+
         st.subheader("Upload Your Qualifications")
         st.info("Accepted formats: PDF, PNG, JPEG")
         
