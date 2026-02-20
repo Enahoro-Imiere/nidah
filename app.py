@@ -507,7 +507,6 @@ def reset_password_page():
 # USER DASHBOARD
 # -------------------------------------------------
 def user_dashboard():
-)
     role = st.session_state.get("role", "")
 
     TRAINING_MODES = [
