@@ -957,7 +957,6 @@ conn.close()
 # ADMIN DASHBOARD
 # -------------------------------------------------
 def admin_dashboard():
-    st.set_page_config(layout="wide")
 
     st.sidebar.title("NIDAH Admin Panel")
     st.sidebar.markdown("---")
