@@ -3,7 +3,6 @@ import psycopg2
 import os
 import bcrypt
 from psycopg2.extras import RealDictCursor
-from dotenv import load_dotenv
 
 
 def get_connection():
