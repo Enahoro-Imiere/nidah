@@ -1829,8 +1829,8 @@ def facility_dashboard_page():
             else:
                 try:
                     conn = get_connection()
-                    cursor = conn.cursor()
-                    cursor.execute("""
+                    cur = conn.cursor()
+                    cur.execute("""
                         INSERT INTO facility_needs (facility_id, need, number)
                         VALUES (%s, %s, %s)
                     """, (st.session_state.user_id, need.strip(), number))
@@ -1840,8 +1840,8 @@ def facility_dashboard_page():
                     st.error("Failed to submit need.")
                     st.exception(e)
                 finally:
-                    if 'cursor' in locals():
-                        cursor.close()
+                    if 'cur' in locals():
+                        cur.close()
                     if 'conn' in locals():
                         conn.close()
 
