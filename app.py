@@ -779,8 +779,8 @@ def user_dashboard():
     if menu_choice == "Upload Documents":
         st.write("Current role:", role)
 
-    conn = get_connection()
-    cur = conn.cursor()
+        conn = get_connection()
+        cur = conn.cursor()
 
         st.subheader("Upload Your Qualifications")
         st.info("Accepted formats: PDF, PNG, JPEG")
@@ -879,9 +879,6 @@ def user_dashboard():
                     with open(fpath, "wb") as f:
                         f.write(file.getbuffer())
                     extra_paths.append(fpath)
-
-                conn = get_connection()
-                cur = conn.cursor()
 
                 if role != "association":
                     # ===== NORMAL USER INSERT =====
