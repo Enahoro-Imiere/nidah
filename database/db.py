@@ -7,8 +7,6 @@ from psycopg2.extras import RealDictCursor
 
 # ---------------- CONNECTION ----------------
 
-import psycopg2
-
 def get_connection():
     return psycopg2.connect(
         host="aws-1-eu-west-2.pooler.supabase.com",
