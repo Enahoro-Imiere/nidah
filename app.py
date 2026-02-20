@@ -934,21 +934,6 @@ def user_dashboard():
     conn.close()
 
 
-
-
-
-
-
-
-    # ================= LOGOUT =================
-    elif menu_choice == "Logout":
-        conn.close()
-        st.session_state.clear()
-        st.session_state.page = "login_user"
-        st.rerun()
-
-    conn.close()
-
 # ---------------- Database Helpers / KPI Functions ----------------
 
 def get_facility_count():
