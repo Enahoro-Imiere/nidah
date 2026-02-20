@@ -1120,7 +1120,8 @@ def admin_dashboard():
                     with col1:
                         st.write(row["Full Name"])
                     with col2:
-                        if st.button("View", key=f"view_ind_{df_ind.at[idx,'ID']}"):
+                        user_id = int(df_ind.at[idx,"ID"])  # cast to native int
+                        if st.button("View", key=f"view_ind_{user_id}"):
                             user_id = df_ind.at[idx,"ID"]
                             st.markdown(f"### 🧑 {row['Full Name']}'s Profile")
                             st.write("**Username:**", df_ind.at[idx,"Username"])
@@ -1172,7 +1173,8 @@ def admin_dashboard():
                     with col1:
                         st.write(row["Full Name"])
                     with col2:
-                        if st.button("View", key=f"view_assoc_{df_assoc.at[idx,'ID']}"):
+                        user_id = int(df_assoc.at[idx,"ID"])
+                        if st.button("View", key=f"view_assoc_{user_id}"):
                             user_id = df_assoc.at[idx,"ID"]
                             st.markdown(f"### 🏢 {row['Full Name']} Profile")
                             st.write("**Username:**", df_assoc.at[idx,"Username"])
@@ -1220,7 +1222,8 @@ def admin_dashboard():
                     with col1:
                         st.write(row["Facility Name"])
                     with col2:
-                        if st.button("View", key=f"view_fac_{df_fac.at[idx,'ID']}"):
+                        facility_id = int(df_fac.at[idx,"ID"])
+                        if st.button("View", key=f"view_fac_{facility_id}"):
                             st.markdown(f"### 🏥 {row['Facility Name']} Details")
                             st.write("**Facility Code:**", df_fac.at[idx,"Code"])
                             st.write("**State:**", df_fac.at[idx,"State"])
