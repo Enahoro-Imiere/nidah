@@ -507,6 +507,9 @@ def reset_password_page():
 # USER DASHBOARD
 # -------------------------------------------------
 def user_dashboard():
+    conn = get_connection()
+    cur = conn.cursor()
+
     role = st.session_state.get("role", "")
 
     menu_choice = st.sidebar.selectbox(
@@ -580,7 +583,7 @@ def user_dashboard():
         # ==================================================
         training_list = []  # ✅ always initialize
 
-        cursor.execute("""
+        cur.execute("""
             SELECT
                 ui.training_title,
                 ui.training_status
@@ -606,7 +609,7 @@ def user_dashboard():
                 else:
                     st.info(f"🕒 {title} — {status}")
 
-        cursor.close()
+        cur.close()
         conn.close()
 
 
