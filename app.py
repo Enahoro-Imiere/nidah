@@ -1878,7 +1878,8 @@ def facility_dashboard_page():
             st.exception(e)
     
     st.markdown("### 🗑️ Manage Submitted Needs")
-
+    conn = get_connection()
+    cur = conn.cursor()
     cur.execute("""
         SELECT id, need, number, created_at
         FROM facility_needs
