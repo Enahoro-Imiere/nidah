@@ -507,6 +507,7 @@ def reset_password_page():
 # USER DASHBOARD
 # -------------------------------------------------
 def user_dashboard():
+)
     role = st.session_state.get("role", "")
 
     TRAINING_MODES = [
@@ -531,7 +532,7 @@ def user_dashboard():
         st.subheader("Dashboard Overview")
 
         # --- Approved interests (show need + facility) ---
-        cursor.execute("""
+        cur.execute("""
             SELECT f.facility_name, n.need
             FROM facility_needs n
             JOIN user_interests ui ON n.id = ui.need_id
@@ -542,7 +543,7 @@ def user_dashboard():
         approved_interests = cursor.fetchall()
 
         # --- Pending / awaiting approval ---
-        cursor.execute("""
+        cur.execute("""
             SELECT DISTINCT f.facility_name
             FROM facility_needs n
             JOIN user_interests ui ON n.id = ui.need_id
@@ -602,9 +603,12 @@ def user_dashboard():
 
     # ================= PROGRAMS =================
     if menu_choice == "Programs":
-        st.subheader(f"{program_category} Programs")
+        program_category = st.selectbox(
+            "Select Program Category",
+            ["Training", "Services"]
+        )
 
-        # Get facility + needs filtered by Training or Services
+        st.subheader(f"{program_category} Programs")
         needs = get_facility_needs_by_program_type(program_category)
 
         if not needs:
@@ -917,11 +921,6 @@ def user_dashboard():
                 conn.close()
 
                 st.success("Documents uploaded successfully ✅")
-
-
-
-
-
 
 
     # ================= LOGOUT =================
