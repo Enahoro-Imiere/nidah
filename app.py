@@ -1093,127 +1093,146 @@ def admin_dashboard():
 
 
 
-    # ---------------- USERS ----------------
-    if menu == "Users":
-        st.subheader("Registered Users")
+    # ---------------- APPLICATIONS ----------------
+    if menu == "Applications":
+        st.subheader("Applications Dashboard")
+        st.info("Click 'View' to see detailed user, association, or facility information.")
 
         try:
             conn = get_connection()
             cur = conn.cursor()
 
+            # ---------------- Individuals ----------------
+            cur.execute("""
+                SELECT id, username, full_name, country, role
+                FROM users
+                WHERE role = 'individual'
+                ORDER BY full_name
+            """)
+            individuals = cur.fetchall()
+
+            if individuals:
+                st.markdown("### Registered Individuals")
+                ind_cols = ["Full Name", "Username", "Country", "Action"]
+                df_ind = pd.DataFrame(
+                    [(full_name, username, country, "View") for (id, username, full_name, country, role) in individuals],
+                    columns=ind_cols
+                )
+                st.dataframe(df_ind, use_container_width=True)
+
+                for user_id, username, full_name, country, role in individuals:
+                    if st.button(f"View {full_name}", key=f"view_ind_{user_id}"):
+                        st.markdown(f"### 🧑 {full_name}'s Profile")
+                        # Basic info
+                        st.write("**Username:**", username)
+                        st.write("**Country:**", country)
+
+                        # Fetch medical license & documents
+                        cur.execute("""
+                            SELECT license_number, file_path, additional_files
+                            FROM user_documents
+                            WHERE user_id = %s
+                        """, (user_id,))
+                        docs = cur.fetchone()
+                        if docs:
+                            license_number, license_file, additional_files = docs
+                            st.write("**Medical License Number:**", license_number or "N/A")
+                            if license_file and os.path.exists(license_file):
+                                with open(license_file, "rb") as f:
+                                    st.download_button("Download License", f.read(), file_name=os.path.basename(license_file))
+                            if additional_files:
+                                for fpath in additional_files:
+                                    if fpath and os.path.exists(fpath):
+                                        with open(fpath, "rb") as f:
+                                            st.download_button(f"Download Additional File", f.read(), file_name=os.path.basename(fpath))
+                        else:
+                            st.info("No documents uploaded yet.")
+                        st.markdown("---")
+
+            else:
+                st.info("No registered individual users found.")
+
+            st.markdown("---")
+
+            # ---------------- Associations ----------------
+            cur.execute("""
+                SELECT id, username, full_name, country
+                FROM users
+                WHERE role = 'association'
+                ORDER BY full_name
+            """)
+            associations = cur.fetchall()
+
+            if associations:
+                st.markdown("### Registered Associations")
+                assoc_cols = ["Full Name", "Username", "Country", "Action"]
+                df_assoc = pd.DataFrame(
+                    [(full_name, username, country, "View") for (id, username, full_name, country) in associations],
+                    columns=assoc_cols
+                )
+                st.dataframe(df_assoc, use_container_width=True)
+
+                for user_id, username, full_name, country in associations:
+                    if st.button(f"View {full_name}", key=f"view_assoc_{user_id}"):
+                        st.markdown(f"### 🏢 {full_name} Profile")
+                        st.write("**Username:**", username)
+                        st.write("**Country:**", country)
+
+                        # Fetch documents
+                        cur.execute("""
+                            SELECT temp_license, additional_files
+                            FROM association_documents
+                            WHERE user_id = %s
+                        """, (user_id,))
+                        docs = cur.fetchone()
+                        if docs:
+                            temp_license, additional_files = docs
+                            st.write("**Temporary License Needed:**", "Yes" if temp_license else "No")
+                            if additional_files:
+                                for fpath in additional_files:
+                                    if fpath and os.path.exists(fpath):
+                                        with open(fpath, "rb") as f:
+                                            st.download_button(f"Download Additional File", f.read(), file_name=os.path.basename(fpath))
+                        else:
+                            st.info("No documents uploaded yet.")
+                        st.markdown("---")
+            else:
+                st.info("No registered associations found.")
+
+            st.markdown("---")
+
             # ---------------- Facilities ----------------
             cur.execute("""
-                SELECT facility_code, facility_name, state
+                SELECT id, facility_name, facility_code, state
                 FROM facilities
                 ORDER BY facility_name
             """)
             facilities = cur.fetchall()
 
             if facilities:
-                st.markdown("### Facilities")
-                df_facilities = pd.DataFrame(facilities, columns=["Username", "Facility Name", "State"])
-                st.dataframe(df_facilities, use_container_width=True)
+                st.markdown("### Registered Facilities")
+                fac_cols = ["Facility Name", "Facility Code", "State", "Action"]
+                df_fac = pd.DataFrame(
+                    [(name, code, state, "View") for (id, name, code, state) in facilities],
+                    columns=fac_cols
+                )
+                st.dataframe(df_fac, use_container_width=True)
+
+                for fac_id, name, code, state in facilities:
+                    if st.button(f"View {name}", key=f"view_fac_{fac_id}"):
+                        st.markdown(f"### 🏥 {name} Details")
+                        st.write("**Facility Code:**", code)
+                        st.write("**State:**", state)
+                        st.markdown("---")
             else:
-                st.info("No registered facilities yet.")
+                st.info("No registered facilities found.")
 
-            st.markdown("---")  # separator
-
-            # ---------------- Individuals / Associations ----------------
-            cur.execute("""
-                SELECT username, full_name, role, country
-                FROM users
-                WHERE role IN ('individual','association')
-                ORDER BY role, username
-            """)
-            users = cur.fetchall()
-
-            if users:
-                st.markdown("### Individuals / Associations")
-                df_users = pd.DataFrame(users, columns=["Username", "Full Name", "Role", "Country"])
-                st.dataframe(df_users, use_container_width=True)
-            else:
-                st.info("No registered individual or association users yet.")
-
+            cur.close()
             conn.close()
 
         except Exception as e:
-            st.error("Could not load users.")
+            st.error("Could not load applications.")
             st.exception(e)
-
-    # ---------------- VIEW USER DOCUMENTS ----------------
-    if menu == "Documents":
-        st.subheader("Uploaded User Documents")
-
-        uploaded_file = st.file_uploader("Upload a document", type=["pdf", "docx", "jpg", "png"])
-        doc_type = st.selectbox("Document Type", ["License", "Certification", "Other"])
-        renew_license = st.checkbox("Renew License?")
-        not_registered_nigeria = st.checkbox("Not Registered in Nigeria?")
-        additional_files = st.text_input("Additional Files (comma-separated)")
-
-        if uploaded_file:
-            file_path = f"uploads/{uploaded_file.name}"  # ensure 'uploads' folder exists
-            with open(file_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-
-            try:
-                conn = get_connection()
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO user_documents (
-                        user_id, document_type, document_name, document_path,
-                        renew_license, not_registered_nigeria, additional_files, uploaded_at
-                    )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
-                """, (
-                    st.session_state.user_id,
-                    doc_type,
-                    uploaded_file.name,
-                    file_path,
-                    renew_license,
-                    not_registered_nigeria,
-                    additional_files
-                ))
-                conn.commit()
-                conn.close()
-                st.success(f"Document '{uploaded_file.name}' uploaded successfully!")
-            except Exception as e:
-                st.error("Failed to upload document.")
-                st.exception(e)
-
-        # ---------------- Display uploaded documents ----------------
-        try:
-            conn = get_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT u.full_name, d.document_type, d.document_name, d.document_path,
-                       d.renew_license, d.not_registered_nigeria, d.additional_files, d.uploaded_at
-                FROM user_documents d
-                JOIN users u ON d.user_id = u.id
-                ORDER BY d.uploaded_at DESC
-            """)
-            rows = cursor.fetchall()
-            conn.close()
-  
-            if rows:
-                for full_name, doc_type, doc_name, doc_path, renew, not_registered, additional, uploaded_at in rows:
-                    st.markdown(f"**{full_name}** - {doc_type} ({uploaded_at.strftime('%Y-%m-%d %H:%M')})")
-                    st.write("Renew License:", renew)
-                    st.write("Not Registered in Nigeria:", not_registered)
-                    st.write("Additional Files:", additional)
-
-                    if doc_path and os.path.exists(doc_path):
-                        with open(doc_path, "rb") as f:
-                            st.download_button(f"Download {doc_name}", f.read(), file_name=doc_name)
-                    else:
-                        st.warning(f"File not found: {doc_name}")
-                    st.markdown("---")
-            else:
-                st.info("No documents uploaded yet.")
-
-        except Exception as e:
-            st.error("Failed to fetch documents.")
-            st.exception(e)
-
 
 
     # ---------------- REPORTS ----------------
@@ -1399,85 +1418,7 @@ def admin_dashboard():
 
 
 
-    # ---------------- APPROVALS ----------------
-    if menu == "Approvals":
-        st.subheader("Approvals Dashboard")
-
-        try:
-            conn = get_connection()
-            cur = conn.cursor()
-
-            # --------------------- Section 1: User-selected Interests ---------------------
-            st.markdown("## Pending Diaspora Interests")
-            cur.execute("""
-                SELECT ui.id, u.full_name, f.facility_name
-                FROM user_interests ui
-                JOIN users u ON ui.user_id = u.id
-                JOIN facility_needs n ON ui.need_id = n.id
-                JOIN facilities f ON n.facility_id = f.id
-                WHERE ui.status = 'Pending'
-                ORDER BY u.full_name, f.facility_name
-            """)
-            pending_interests = cur.fetchall()
-
-            if not pending_interests:
-                st.info("No pending user interests.")
-            else:
-                for ui_id, user_name, facility_name in pending_interests:
-                    col1, col2, col3 = st.columns([3, 4, 2])
-                    with col1:
-                        st.write(user_name)
-                    with col2:
-                        st.write(facility_name)
-                    with col3:
-                        if st.button(f"Approve Interest {ui_id}", key=f"approve_interest_{ui_id}"):
-                            cur.execute("""
-                                UPDATE user_interests
-                                SET status = 'Approved'
-                                WHERE id = %s
-                            """, (ui_id,))
-                            conn.commit()
-                            st.success(f"User interest for {user_name} → {facility_name} approved!")
-                            st.experimental_rerun()
-
-            st.markdown("---")
-
-            # --------------------- Section 2: Auto-Matched Users ---------------------
-            st.markdown("## Pending System Matches")
-            cur.execute("""
-                SELECT ua.user_id, u.full_name, ua.facility_id, f.facility_name, ua.score, ua.assigned_at
-                FROM user_assignments ua
-                JOIN users u ON ua.user_id = u.id
-                JOIN facilities f ON ua.facility_id = f.id
-                WHERE ua.status = 'Pending'
-                ORDER BY ua.assigned_at DESC
-            """)
-            pending_matches = cur.fetchall()
-
-            if not pending_matches:
-                st.info("No pending system matches.")
-            else:
-                for user_id, user_name, facility_id, facility_name, score, assigned_at in pending_matches:
-                    col1, col2 = st.columns([5, 1])
-                    with col1:
-                        st.markdown(f"**{user_name}** → **{facility_name}** | Score: {score} | Proposed: {assigned_at.strftime('%Y-%m-%d %H:%M')}")
-                    with col2:
-                        if st.button(f"Approve Match {user_id}", key=f"approve_match_{user_id}"):
-                            cur.execute("""
-                                UPDATE user_assignments
-                                SET status = 'Approved'
-                                WHERE user_id = %s
-                            """, (user_id,))
-                            conn.commit()
-                            st.success(f"System match for {user_name} → {facility_name} approved!")
-                            st.experimental_rerun()
-
-            cur.close()
-            conn.close()
-
-        except Exception as e:
-            st.error("Could not load approvals.")
-            st.exception(e)
+    
 
 
         # ---------------- MATCH USERS TO FACILITIES ----------------
