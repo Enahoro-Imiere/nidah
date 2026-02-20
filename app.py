@@ -1849,14 +1849,14 @@ def facility_dashboard_page():
 
         try:
             conn = get_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT need, quantity, timestamp
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT need, number, timestamp
                 FROM facility_needs
                 WHERE facility_id = %s
                 ORDER BY timestamp DESC
             """, (st.session_state.user_id,))
-            needs = cursor.fetchall()
+            needs = cur.fetchall()
             conn.close()
 
             if not needs:
@@ -1874,17 +1874,14 @@ def facility_dashboard_page():
     
     st.markdown("### 🗑️ Manage Submitted Needs")
 
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
+    cur.execute("""
         SELECT id, need, number, created_at
         FROM facility_needs
         WHERE facility_id = %s
         ORDER BY created_at DESC
     """, (st.session_state.user_id,))
 
-    needs = cursor.fetchall()
+    needs = cur.fetchall()
 
     if not needs:
         st.info("No needs submitted yet.")
@@ -1919,7 +1916,7 @@ def facility_dashboard_page():
                         st.session_state.edit_number = number
 
                     if st.button("🗑️ Delete", key=delete_key):
-                        cursor.execute(
+                        cur.execute(
                             "DELETE FROM facility_needs WHERE id = %s",
                             (need_id,)
                         )
@@ -1950,7 +1947,7 @@ def facility_dashboard_page():
 
                 with save_col:
                     if st.button("💾 Save", key=f"save_{need_id}"):
-                        cursor.execute("""
+                        cur.execute("""
                             UPDATE facility_needs
                             SET need = %s, number = %s
                             WHERE id = %s
@@ -1966,7 +1963,7 @@ def facility_dashboard_page():
                         st.session_state.editing_need_id = None
                         st.rerun()
 
-    cursor.close()
+    cur.close()
     conn.close()
 
 

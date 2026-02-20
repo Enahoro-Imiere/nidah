@@ -3,6 +3,8 @@ import bcrypt
 import uuid
 from psycopg2.extras import RealDictCursor
 
+from database.connection import get_connection
+
 def authenticate_facility(facility_code, password):
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
