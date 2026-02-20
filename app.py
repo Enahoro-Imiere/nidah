@@ -552,7 +552,7 @@ def user_dashboard():
             WHERE ui.user_id = %s AND ui.status = 'Approved'
             ORDER BY f.facility_name
         """, (st.session_state.user_id,))
-        approved_interests = cursor.fetchall()
+        approved_interests = cur.fetchall()
 
         # --- Pending / awaiting approval ---
         cur.execute("""
@@ -563,7 +563,7 @@ def user_dashboard():
             WHERE ui.user_id = %s AND ui.status = 'Pending'
             ORDER BY f.facility_name
         """, (st.session_state.user_id,))
-        pending_facilities = cursor.fetchall()
+        pending_facilities = cur.fetchall()
 
         if not approved_interests and not pending_facilities:
             st.info("You have not engaged in any program yet.")
@@ -594,7 +594,7 @@ def user_dashboard():
               AND ui.status = 'Approved'
             ORDER BY ui.training_status
         """, (st.session_state.user_id,))
-        training_list = cursor.fetchall()
+        training_list = cur.fetchall()
 
         st.markdown("### 📘 List of Training(s)")
 
@@ -664,13 +664,13 @@ def user_dashboard():
                         key=f"user_{st.session_state.user_id}_need_{row['need_id']}"
                     ):
                         # Insert into PostgreSQL and return the id
-                        cursor.execute("""
+                        cur.execute("""
                             INSERT INTO user_interests (user_id, need_id, status)
                             VALUES (%s, %s, 'Pending')
                             RETURNING id
                         """, (st.session_state.user_id, row['need_id']))
             
-                        st.session_state[interest_key] = cursor.fetchone()[0]  # store interest_id
+                        st.session_state[interest_key] = cur.fetchone()[0]  # store interest_id
                         conn.commit()
                         st.success("Interest recorded and awaiting approval")
 
@@ -694,7 +694,7 @@ def user_dashboard():
                                 if training_mode == "Select one":
                                     st.error("Please select a training mode.")
                                 else:
-                                    cursor.execute("""
+                                    cur.execute("""
                                         UPDATE user_interests
                                         SET training_mode = %s
                                         WHERE id = %s
